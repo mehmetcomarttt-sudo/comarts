@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QTE Hız Yarışması (Gizli Ok Etiketleri)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Genel Stil */
+        body {
+            background-color: #1a202c; /* Koyu Uzay Teması */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            padding: 10px;
+        }
+
+        /* Ana Oyun Alanı - GENİŞLETİLDİ */
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 500px;
+            min-height: 400px;
+            background-color: #2d3748;
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+            padding: 30px;
+        }
+
+        .info-card {
+            background-color: #2d3748;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            width: 500px;
+        }
+
+        /* QTE Animasyonu (Horoz) */
+        .rooster-fast {
+            animation: shake 0.4s infinite alternate; /* Hızlı titreşim efekti */
+            color: #F56565 !important; /* Hızlı olduğunda kırmızı */
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            25% { transform: translate(-1px, -2px) rotate(-1deg); }
+            50% { transform: translate(-3px, 0px) rotate(1deg); }
+            75% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -1px) rotate(-1deg); }
+        }
+        
+        /* QTE Öğesi Stili */
+        .qte-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.1s;
+            line-height: 1;
+            width: 60px; /* Okların/harflerin sabit bir alana sahip olması için */
+        }
+
+        .qte-symbol {
+            font-size: 3rem; /* Sembol (Ok veya Büyük Harf) */
+            font-weight: 900;
+            line-height: 1.1;
+        }
+        
+        .qte-label {
+            font-weight: bold;
+            padding-top: 5px;
+            font-size: 0.9rem;
+            color: #ccc;
+            height: 1.5rem; /* Etiket boş bırakıldığında bile yerini korumak için */
+        }
+
+        /* Süre Çubuğu Stili */
+        #time-bar {
+            transition: background-color 0.3s;
+        }
+
+        /* Yıldız ve Yumurta Stili */
+        .star-container, #egg-display {
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        .star-pulse {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1.0); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.9; }
+            100% { transform: scale(1.0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info-card">
+        <h1 class="text-3xl font-bold mb-2 text-red-400">EKSTRA ZOR QTE TESTİ</h1>
+        <p class="text-sm">Hem yön tuşları (WASD) hem de rastgele klavye harfleri çıkacak!</p>
+        <p class="text-xs mt-2 font-bold text-yellow-200">Kontroller: ← → ↑ ↓ (Yön Tuşları) VEYA W A S D VEYA GÖSTERİLEN HARF</p>
+        <p class="text-xs mt-1 text-red-300">UYARI: Okların altındaki harf etiketleri gizlenmiştir!</p>
+        
+        <div class="flex justify-between items-center mt-4 mb-2">
+            <p class="text-lg font-semibold">Hız Seviyesi: <span id="level" class="text-xl text-green-400">1</span></p>
+            <p class="text-lg font-semibold">Seri Hedefi: <span id="streak-goal-display" class="text-xl text-yellow-400">5</span></p>
+        </div>
+        
+        <!-- DİNAMİK YILDIZ GÖSTERGESİ (HIZA GÖRE) -->
+        <div id="star-display" class="star-container h-8 mt-2 flex justify-center space-x-1 text-3xl text-yellow-400 opacity-0">
+            <!-- Yıldızlar buraya gelecek -->
+        </div>
+
+        <!-- YUMURTA GÖSTERGESİ (10'LUK SERİ BAŞARISINDA) -->
+        <div id="egg-display" class="h-8 mt-2 text-4xl opacity-0 transition-opacity">
+            🥚
+        </div>
+    </div>
+    
+    <!-- QTE Ana Alanı -->
+    <div id="qte-game-area" class="game-area">
+        <div class="text-xl font-bold mb-8 flex items-center justify-center space-x-2">
+            <span id="rooster-icon" class="text-5xl transition-colors duration-500" style="color: white;">🐔</span> 
+            <span class="text-yellow-300">HOROZ GÖSTERGESİ</span>
+        </div>
+        
+        <!-- QTE Ok Dizisi -->
+        <div id="qte-sequence" class="flex justify-center h-24 space-x-3 mb-6">
+            <!-- Oklar/harfler buraya gelecek -->
+        </div>
+
+        <!-- Kalan Süre Çubuğu -->
+        <div id="time-bar-container" class="w-full h-4 bg-gray-500 rounded-full mt-4 mb-4 overflow-hidden shadow-inner max-w-xs">
+            <div id="time-bar" class="h-full bg-green-500 transition-all duration-100 ease-linear" style="width: 100%;"></div>
+        </div>
+        
+        <p id="qte-message" class="text-xl font-bold text-green-300 h-8">Hazır!</p>
+    </div>
+
+
+    <script>
+        // QTE Ayarları
+        const SLOWEST_TIME = 8000; 
+        const FASTEST_TIME = 1000; 
+        const SUCCESS_INCREASE = 300; 
+        const FAILURE_DECREASE = 500; 
+        const INITIAL_STREAK_GOAL = 5;
+
+        // QTE Girişlerini Tanımlama
+        const QTE_INPUTS = [
+            'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', // Yön Tuşları
+            'q', 'e', 'r', 'f', 'g', 'h', 'j', 'k', 'z', 'c', 'v', 'b' // Rastgele Harfler
+        ];
+
+        // Giriş Bilgisi Haritası (Görsel ve Alternatif Tuşları içerir)
+        const INPUT_INFO_MAP = {
+            'ArrowLeft': { symbol: '←', label: 'A', altKeys: ['a', 'ArrowLeft'] },
+            'ArrowRight': { symbol: '→', label: 'D', altKeys: ['d', 'ArrowRight'] },
+            'ArrowUp': { symbol: '↑', label: 'W', altKeys: ['w', 'ArrowUp'] },
+            'ArrowDown': { symbol: '↓', label: 'S', altKeys: ['s', 'ArrowDown'] },
+            // Rastgele Harfler (Sembol ve Etiket harfin kendisi olacak)
+            'q': { symbol: 'Q', label: 'Q', altKeys: ['q'] },
+            'e': { symbol: 'E', label: 'E', altKeys: ['e'] },
+            'r': { symbol: 'R', label: 'R', altKeys: ['r'] },
+            'f': { symbol: 'F', label: 'F', altKeys: ['f'] },
+            'g': { symbol: 'G', label: 'G', altKeys: ['g'] },
+            'h': { symbol: 'H', label: 'H', altKeys: ['h'] },
+            'j': { symbol: 'J', label: 'J', altKeys: ['j'] },
+            'k': { symbol: 'K', label: 'K', altKeys: ['k'] },
+            'z': { symbol: 'Z', label: 'Z', altKeys: ['z'] },
+            'c': { symbol: 'C', label: 'C', altKeys: ['c'] },
+            'v': { symbol: 'V', label: 'V', altKeys: ['v'] },
+            'b': { symbol: 'B', label: 'B', altKeys: ['b'] },
+        };
+        
+        // Giriş Tuşlarını tersine haritalama 
+        const REVERSE_KEY_MAP = {};
+        QTE_INPUTS.forEach(qteKey => {
+            const info = INPUT_INFO_MAP[qteKey];
+            info.altKeys.forEach(altKey => {
+                REVERSE_KEY_MAP[altKey.toLowerCase()] = qteKey;
+            });
+        });
+
+        // Oyun Durumu
+        let currentQTEAllowedTime = SLOWEST_TIME; 
+        let level = 1; 
+        let currentStreakGoal = INITIAL_STREAK_GOAL; 
+        let consecutiveWins = 0; 
+        let qteSequence = []; 
+        let qteCurrentIndex = 0;
+        let qteTimerId = null;
+        let qteStartTime = 0;
+        let animationFrameId = null; 
+
+        // HTML Elementleri
+        const levelElement = document.getElementById('level');
+        const streakGoalDisplay = document.getElementById('streak-goal-display');
+        const qteContainer = document.getElementById('qte-sequence');
+        const qteMessage = document.getElementById('qte-message');
+        const roosterIcon = document.getElementById('rooster-icon');
+        const timeBar = document.getElementById('time-bar');
+        const starDisplay = document.getElementById('star-display');
+        const eggDisplay = document.getElementById('egg-display');
+
+
+        // --- YARDIMCI VE GÖSTERGE FONKSİYONLARI ---
+
+        function getQTEInfo(qteKey) {
+            return INPUT_INFO_MAP[qteKey] || { symbol: '?', label: '?', altKeys: [] };
+        }
+
+        function animateTimeBar() {
+            const elapsed = Date.now() - qteStartTime;
+            const remainingPercentage = 100 - ((elapsed / currentQTEAllowedTime) * 100);
+
+            timeBar.style.width = `${Math.max(0, remainingPercentage)}%`;
+            
+            // Rengi kalan süreye göre ayarla
+            if (remainingPercentage > 50) {
+                timeBar.style.backgroundColor = '#48BB78'; // Yeşil 
+            } else if (remainingPercentage > 20) {
+                timeBar.style.backgroundColor = '#ECC94B'; // Sarı 
+            } else {
+                timeBar.style.backgroundColor = '#F56565'; // Kırmızı 
+            }
+
+            if (remainingPercentage > 0 && qteSequence.length > 0) {
+                animationFrameId = requestAnimationFrame(animateTimeBar);
+            }
+        }
+
+        function updateRoosterMeter() {
+            levelElement.textContent = level;
+            streakGoalDisplay.textContent = `${consecutiveWins}/${currentStreakGoal}`;
+
+            // 3000ms altında çok hızlı (zor) demektir.
+            if (currentQTEAllowedTime <= 3000) { 
+                roosterIcon.classList.add('rooster-fast');
+            } else {
+                roosterIcon.classList.remove('rooster-fast');
+                roosterIcon.style.color = 'white';
+            }
+        }
+
+        function updateStarDisplay() {
+            let stars = 0;
+            // Yıldızlar Hıza bağlıdır (zorluk derecesine)
+            if (currentQTEAllowedTime < 3000) {
+                stars = 3; 
+            } else if (currentQTEAllowedTime < 5000) {
+                stars = 2; 
+            } else if (currentQTEAllowedTime < SLOWEST_TIME) {
+                stars = 1; 
+            }
+            
+            starDisplay.innerHTML = '';
+            if (consecutiveWins > 0) {
+                starDisplay.style.opacity = '1';
+                for (let i = 0; i < stars; i++) {
+                    const star = document.createElement('span');
+                    star.textContent = '⭐';
+                    star.className = 'star-pulse';
+                    starDisplay.appendChild(star);
+                }
+            } else {
+                 starDisplay.style.opacity = '0';
+            }
+        }
+
+        function updateEggDisplay(show) {
+            eggDisplay.style.opacity = show ? '1' : '0';
+        }
+        
+        // --- QTE DİZİSİ YÖNETİMİ ---
+
+        function generateQteSequence() {
+            if (qteTimerId) clearTimeout(qteTimerId);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            // Dizi uzunluğunu seviyeye göre artır
+            const minLength = 3;
+            const maxLength = 10;
+            const length = Math.min(maxLength, minLength + Math.floor((level - 1) / 2));
+            
+            qteSequence = [];
+            for (let i = 0; i < length; i++) {
+                // QTE_INPUTS dizisinden rastgele bir anahtar seç
+                const qteKey = QTE_INPUTS[Math.floor(Math.random() * QTE_INPUTS.length)];
+                qteSequence.push(qteKey);
+            }
+            qteCurrentIndex = 0;
+            qteStartTime = Date.now();
+            renderQteSequence();
+            
+            qteTimerId = setTimeout(() => {
+                handleQteFailure("SÜRE DOLDU! HIZLANIYORUZ!");
+            }, currentQTEAllowedTime);
+
+            animateTimeBar();
+        }
+
+        function renderQteSequence() {
+            qteContainer.innerHTML = '';
+            qteSequence.forEach((qteKey, index) => {
+                const info = getQTEInfo(qteKey);
+                let statusClass = 'text-gray-500'; 
+                let labelClass = 'text-gray-400';
+                
+                // Başarılı/Aktif/Beklemede durumlarına göre renklendirme
+                if (index < qteCurrentIndex) {
+                    statusClass = 'text-green-500'; 
+                    labelClass = 'text-green-300';
+                } else if (index === qteCurrentIndex) {
+                    statusClass = 'text-yellow-500 scale-125 font-extrabold shadow-md'; 
+                    labelClass = 'text-yellow-300 scale-125 font-extrabold';
+                } else {
+                    statusClass = 'text-gray-600'; 
+                    labelClass = 'text-gray-500';
+                }
+
+                const itemElement = document.createElement('div');
+                itemElement.className = `qte-item ${index === qteCurrentIndex ? 'transform scale-110' : ''}`;
+
+                const symbolElement = document.createElement('span');
+                symbolElement.className = `qte-symbol ${statusClass}`;
+                symbolElement.textContent = info.symbol; // Ok veya Büyük Harf
+
+                const labelElement = document.createElement('span');
+                labelElement.className = `qte-label ${labelClass} transition-colors`;
+                
+                // İSTENEN DEĞİŞİKLİK BURADA: Oklar için harf etiketini gizle.
+                if (qteKey.startsWith('Arrow')) {
+                    labelElement.textContent = ''; // Etiketi boş bırak
+                } else {
+                    // Harf QTE'leri için harf etiketini koru (küçük harf)
+                    labelElement.textContent = info.label.toLowerCase(); 
+                }
+
+                itemElement.appendChild(symbolElement);
+                itemElement.appendChild(labelElement);
+                qteContainer.appendChild(itemElement);
+            });
+            
+            if (qteCurrentIndex === qteSequence.length) {
+                qteMessage.textContent = "BAŞARILI! Yeni Diziyi Bekle...";
+            } else {
+                const info = getQTEInfo(qteSequence[qteCurrentIndex]);
+                const requiredInput = qteSequence[qteCurrentIndex].startsWith('Arrow') ? 
+                    info.label + " (WASD)" : 
+                    info.label;
+                qteMessage.textContent = `Sıradaki: ${info.symbol} (${requiredInput})`;
+            }
+        }
+
+        function handleQteFailure(message) {
+            // Süreyi azalt (HIZLANDIR)
+            currentQTEAllowedTime = Math.max(FASTEST_TIME, currentQTEAllowedTime - FAILURE_DECREASE); 
+            
+            // Seriyi sıfırla ve seviyeyi düşür
+            consecutiveWins = 0;
+            currentStreakGoal = INITIAL_STREAK_GOAL; 
+            level = Math.max(1, level - 1); 
+            
+            updateEggDisplay(false); 
+            updateStarDisplay(); 
+            updateRoosterMeter();
+            
+            if (qteTimerId) clearTimeout(qteTimerId);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            qteMessage.textContent = message + ` Hız Arttı! 🚀 (${(currentQTEAllowedTime/1000).toFixed(1)}s)`;
+            timeBar.style.width = '100%';
+            timeBar.style.backgroundColor = '#F56565';
+            qteContainer.innerHTML = ''; 
+            
+            // Kısa bir beklemeden sonra yeni diziyi başlat
+            setTimeout(() => {
+                generateQteSequence();
+            }, 1500); 
+        }
+
+        function handleQteSuccess() {
+             // Süreyi artır (YAVAŞLAT)
+            currentQTEAllowedTime = Math.min(SLOWEST_TIME, currentQTEAllowedTime + SUCCESS_INCREASE);
+            
+            consecutiveWins++;
+            
+            let bonusMessage = '';
+
+            if (consecutiveWins === currentStreakGoal) {
+                // Seri tamamlandı, bir sonraki seviyeye geç
+                
+                if (currentStreakGoal === 10) {
+                    updateEggDisplay(true);
+                    bonusMessage += ' 🥚 YUMURTA KAZANDIN! 🥚';
+                } else {
+                    updateEggDisplay(false);
+                }
+
+                currentStreakGoal++; // Hedefi bir artır
+                consecutiveWins = 0; 
+                level++; 
+                
+                bonusMessage = ` YENİ HEDEF: ${currentStreakGoal}!` + bonusMessage;
+            } else {
+                updateEggDisplay(false);
+            }
+
+            updateStarDisplay(); 
+            updateRoosterMeter();
+            
+            // Zamanlayıcıyı ve animasyonu temizle
+            if (qteTimerId) clearTimeout(qteTimerId);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            
+            qteMessage.textContent = `HARİKA! Hızın Yavaşladı. (${(currentQTEAllowedTime/1000).toFixed(1)}s)` + bonusMessage;
+            
+            // Yeni QTE'yi hızlıca başlat
+            setTimeout(generateQteSequence, 500);
+        }
+
+        function handleQteInput(eventKey) {
+            // Basılan tuşu REVERSE_KEY_MAP üzerinden beklenen QTE anahtarına çevir
+            const expectedQTEKey = REVERSE_KEY_MAP[eventKey.toLowerCase()];
+            
+            if (!expectedQTEKey || qteSequence.length === 0) return;
+            
+            // Her tuşa basıldığında, sürenin dolup dolmadığını kontrol et
+            if (Date.now() - qteStartTime > currentQTEAllowedTime) {
+                handleQteFailure("ÇOK YAVAŞSIN!");
+                return;
+            }
+
+            // Beklenen QTE anahtarı (ArrowUp veya q) ile dizideki mevcut anahtarı karşılaştır
+            if (expectedQTEKey === qteSequence[qteCurrentIndex]) {
+                qteCurrentIndex++;
+                
+                if (qteCurrentIndex === qteSequence.length) {
+                    handleQteSuccess();
+                } else {
+                    renderQteSequence(); 
+                }
+            } else {
+                handleQteFailure("YANLIŞ TUŞ!");
+            }
+        }
+
+        // KLAVYE KONTROLÜ
+        document.addEventListener('keydown', (e) => {
+            // Sadece haritalanmış tuşları işle
+            if (REVERSE_KEY_MAP.hasOwnProperty(e.key.toLowerCase()) || e.key.startsWith('Arrow')) {
+                e.preventDefault(); // Sayfanın kaymasını engelle
+                handleQteInput(e.key);
+            }
+        });
+
+        // OYUN BAŞLANGIÇ
+        function startGame() {
+            level = 1;
+            currentStreakGoal = INITIAL_STREAK_GOAL;
+            consecutiveWins = 0;
+            currentQTEAllowedTime = SLOWEST_TIME; 
+            updateRoosterMeter();
+            updateStarDisplay();
+            updateEggDisplay(false);
+            generateQteSequence(); 
+        }
+
+        window.onload = startGame;
+    </script>
+</body>
+</html>
